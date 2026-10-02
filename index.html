@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ระบบสแกนบาร์โค้ดผู้แพ็ก</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,'Noto Sans Thai',sans-serif;background:#f5f7fb;color:#1f2937}
+header{background:#111827;color:#fff;padding:16px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+header h1{font-size:20px;margin:0}.wrap{max-width:1150px;margin:20px auto;padding:0 14px}
+.card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 4px 18px #00000010;margin-bottom:16px}
+h2{margin-top:0}.people{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+button{border:0;border-radius:12px;padding:12px 15px;font-size:16px;cursor:pointer;background:#2563eb;color:#fff}
+button.secondary{background:#e5e7eb;color:#111827}button.danger{background:#dc2626}.person.active{outline:4px solid #93c5fd}
+select,input{font:inherit}.select,input[type=text],input[type=date]{padding:12px;border:1px solid #d1d5db;border-radius:10px}
+.scanbox{display:flex;gap:10px}.scanbox input{flex:1;font-size:25px;padding:15px;border:2px solid #d1d5db;border-radius:12px}
+.status{padding:18px;border-radius:12px;margin-top:14px;font-size:20px;font-weight:700}.ok{background:#dcfce7;color:#166534}.bad{background:#fee2e2;color:#991b1b}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}.stat{background:#f9fafb;border-radius:12px;padding:15px}.stat b{display:block;font-size:28px;margin-top:5px}
+table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left}th{background:#f9fafb}
+.controls{display:flex;gap:8px;flex-wrap:wrap}.small{font-size:13px;color:#6b7280}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#e5e7eb}
+.transport-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.setting{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+@media(max-width:650px){.scanbox{flex-direction:column}header{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header><h1>📦 ระบบสแกนบาร์โค้ดผู้แพ็ก</h1><div id="currentUser">ยังไม่ได้เลือกผู้แพ็ก</div></header>
+<div class="wrap">
+
+<section class="card">
+<h2>⚙️ ตั้งค่าระบบ</h2>
+<div class="setting">
+<input id="newPerson" type="text" placeholder="เพิ่มชื่อผู้แพ็ก">
+<button type="button" onclick="addPerson()">+ เพิ่มผู้แพ็ก</button>
+</div>
+<div class="setting">
+<input id="newTransport" type="text" placeholder="เพิ่มขนส่ง เช่น J&T, KEX">
+<button type="button" onclick="addTransport()">+ เพิ่มขนส่ง</button>
+</div>
+<div class="small">รายชื่อและขนส่งจะจำไว้ในเครื่องนี้ สามารถเพิ่มได้ตลอดเวลา</div>
+</section>
+
+<section class="card">
+<h2>1. เลือกผู้แพ็ก</h2>
+<div class="people" id="people"></div>
+<p class="small">เลือกชื่อก่อนเริ่มยิงบาร์โค้ด</p>
+</section>
+
+<section class="card">
+<h2>2. เลือกขนส่ง</h2>
+<div class="transport-grid" id="transports"></div>
+<p class="small">ขนส่งที่เลือกจะถูกบันทึกไปพร้อมกับเลขออเดอร์ทุกครั้ง</p>
+</section>
+
+<section class="card">
+<h2>3. สแกนเลขออเดอร์</h2>
+<div class="scanbox"><input id="barcode" autocomplete="off" placeholder="ยิงบาร์โค้ดที่นี่ แล้วกด Enter"><button type="button" onclick="scan()">บันทึก</button></div>
+<div id="status"></div>
+</section>
+
+<section class="card">
+<h2>📊 สรุปวันนี้</h2>
+<div class="stats" id="stats"></div>
+<h3>แยกตามขนส่ง</h3>
+<div class="stats" id="transportStats"></div>
+</section>
+
+<section class="card">
+<div class="row" style="justify-content:space-between">
+<h2 style="margin:0">📋 ประวัติการแพ็ก</h2>
+<div class="controls">
+<input id="search" placeholder="ค้นหาออเดอร์/ชื่อ/ขนส่ง">
+<input id="date" type="date">
+<select id="filterTransport" class="select"><option value="">ทุกขนส่ง</option></select>
+<select id="filterEmployee" class="select"><option value="">ทุกผู้แพ็ก</option></select>
+<button type="button" class="secondary" onclick="exportCSV()">ส่งออก CSV</button>
+</div>
+</div>
+<div style="overflow:auto;margin-top:12px">
+<table><thead><tr><th>ออเดอร์</th><th>ผู้แพ็ก</th><th>ขนส่ง</th><th>วันที่</th><th>เวลา</th><th>สถานะ</th></tr></thead>
+<tbody id="history"></tbody></table></div>
+</section>
+
+<section class="card">
+<h2>👥 จัดการรายชื่อ</h2>
+<div id="managePeople"></div>
+<h2 style="margin-top:20px">🚚 จัดการขนส่ง</h2>
+<div id="manageTransports"></div>
+</section>
+</div>
+
+<script>
+const defaultPeople=['เค้ก','ชมพู่','ออย','อ๊อฟ','เนย'];
+const defaultTransports=['J&T','KEX','Flash','ไปรษณีย์ไทย','Shopee Express'];
+let people=JSON.parse(localStorage.getItem('packing_people')||JSON.stringify(defaultPeople));
+let transports=JSON.parse(localStorage.getItem('packing_transports')||JSON.stringify(defaultTransports));
+let user=localStorage.getItem('packing_user')||'';
+let transport=localStorage.getItem('packing_transport')||'';
+let records=JSON.parse(localStorage.getItem('packing_records')||'[]');
+const $=id=>document.getElementById(id);
+function persist(){localStorage.setItem('packing_people',JSON.stringify(people));localStorage.setItem('packing_transports',JSON.stringify(transports));localStorage.setItem('packing_user',user);localStorage.setItem('packing_transport',transport);localStorage.setItem('packing_records',JSON.stringify(records))}
+function renderPeople(){
+ $('people').innerHTML=people.map((n,i)=>`<button type="button" class="person ${user===n?'active':''}" data-person-index="${i}">${esc(n)}</button>`).join('');
+ $('currentUser').textContent=user?`ผู้แพ็ก: ${user}${transport?' | ขนส่ง: '+transport:''}`:'ยังไม่ได้เลือกผู้แพ็ก';
+ $('filterEmployee').innerHTML='<option value="">ทุกผู้แพ็ก</option>'+people.map(n=>`<option>${esc(n)}</option>`).join('');
+ $('managePeople').innerHTML=people.map((n,i)=>`<span class="badge">${esc(n)} <button style="padding:4px 8px;font-size:12px;background:#dc2626" onclick="removePerson(${i})">ลบ</button></span>`).join(' ');
+}
+function renderTransports(){
+ $('transports').innerHTML=transports.map((t,i)=>`<button type="button" class="person ${transport===t?'active':''}" data-transport-index="${i}">🚚 ${esc(t)}</button>`).join('');
+ $('filterTransport').innerHTML='<option value="">ทุกขนส่ง</option>'+transports.map(t=>`<option>${esc(t)}</option>`).join('');
+ $('manageTransports').innerHTML=transports.map((t,i)=>`<span class="badge">${esc(t)} <button style="padding:4px 8px;font-size:12px;background:#dc2626" onclick="removeTransport(${i})">ลบ</button></span>`).join(' ');
+}
+function selectUser(n){user=n;persist();render();$('barcode').focus()}
+function selectTransport(t){transport=t;persist();render();$('barcode').focus()}
+function addPerson(){let n=$('newPerson').value.trim();if(!n)return;if(!people.includes(n))people.push(n);$('newPerson').value='';persist();render()}
+function addTransport(){let n=$('newTransport').value.trim();if(!n)return;if(!transports.includes(n))transports.push(n);$('newTransport').value='';persist();render()}
+function removePerson(i){if(confirm('ลบชื่อผู้แพ็กนี้หรือไม่?')){if(user===people[i])user='';people.splice(i,1);persist();render()}}
+function removeTransport(i){if(confirm('ลบขนส่งนี้หรือไม่?')){if(transport===transports[i])transport='';transports.splice(i,1);persist();render()}}
+function scan(){
+ const code=$('barcode').value.trim();$('barcode').value='';
+ if(!code){show(false,'⚠️ กรุณายิงบาร์โค้ด');focusScan();return}
+ if(!user){show(false,'⚠️ กรุณาเลือกผู้แพ็กก่อน');focusScan();return}
+ if(!transport){show(false,'⚠️ กรุณาเลือกขนส่งก่อน');focusScan();return}
+ const old=records.find(r=>r.order===code);
+ if(old){show(false,`⚠️ ออเดอร์ ${code} ถูกแพ็กแล้วโดย ${old.employee} | ${old.transport} | ${old.date} ${old.time}`);beep(false);render();focusScan();return}
+ const d=new Date();
+ records.unshift({order:code,employee:user,transport:transport,date:d.toISOString().slice(0,10),time:d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),status:'แพ็กแล้ว'});
+ persist();show(true,`✅ บันทึกสำเร็จ — ${code} | ${user} | ${transport}`);beep(true);render();focusScan();
+}
+function show(ok,msg){$('status').className='status '+(ok?'ok':'bad');$('status').textContent=msg}
+function focusScan(){$('barcode').focus()}
+$('people').addEventListener('click',e=>{
+ const b=e.target.closest('[data-person-index]');
+ if(!b)return;
+ const i=Number(b.dataset.personIndex);
+ if(Number.isInteger(i)&&people[i]!==undefined) selectUser(people[i]);
+});
+$('transports').addEventListener('click',e=>{
+ const b=e.target.closest('[data-transport-index]');
+ if(!b)return;
+ const i=Number(b.dataset.transportIndex);
+ if(Number.isInteger(i)&&transports[i]!==undefined) selectTransport(transports[i]);
+});
+$('barcode').addEventListener('keydown',e=>{if(e.key==='Enter')scan()});
+$('search').addEventListener('input',renderHistory);$('date').addEventListener('change',renderHistory);$('filterTransport').addEventListener('change',renderHistory);$('filterEmployee').addEventListener('change',renderHistory);
+function today(){return new Date().toISOString().slice(0,10)}
+function render(){
+ renderPeople();renderTransports();
+ const todayRows=records.filter(r=>r.date===today());
+ const counts=Object.fromEntries(people.map(n=>[n,0]));todayRows.forEach(r=>counts[r.employee]=(counts[r.employee]||0)+1);
+ $('stats').innerHTML=people.map(n=>`<div class="stat">${esc(n)}<b>${counts[n]||0}</b><span class="small">ออเดอร์วันนี้</span></div>`).join('')+`<div class="stat">รวม<b>${todayRows.length}</b><span class="small">ออเดอร์วันนี้</span></div>`;
+ const tc=Object.fromEntries(transports.map(t=>[t,0]));todayRows.forEach(r=>tc[r.transport]=(tc[r.transport]||0)+1);
+ $('transportStats').innerHTML=transports.map(t=>`<div class="stat">🚚 ${esc(t)}<b>${tc[t]||0}</b><span class="small">ออเดอร์วันนี้</span></div>`).join('');
+ renderHistory();
+}
+function renderHistory(){
+ const q=$('search').value.trim().toLowerCase(),dt=$('date').value,ft=$('filterTransport').value,fe=$('filterEmployee').value;
+ let rows=records.filter(r=>(!q||r.order.toLowerCase().includes(q)||r.employee.toLowerCase().includes(q)||r.transport.toLowerCase().includes(q))&&(!dt||r.date===dt)&&(!ft||r.transport===ft)&&(!fe||r.employee===fe));
+ $('history').innerHTML=rows.map(r=>`<tr><td><b>${esc(r.order)}</b></td><td>${esc(r.employee)}</td><td>🚚 ${esc(r.transport)}</td><td>${r.date}</td><td>${r.time}</td><td>✅ ${r.status}</td></tr>`).join('')||'<tr><td colspan="6" class="small">ยังไม่มีข้อมูล</td></tr>';
+}
+function exportCSV(){
+ let csv='order,employee,transport,date,time,status\n'+records.map(r=>[r.order,r.employee,r.transport,r.date,r.time,r.status].map(x=>`"${String(x).replaceAll('"','""')}"`).join(',')).join('\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));a.download='packing_records.csv';a.click();
+}
+function beep(ok){try{const c=new AudioContext(),o=c.createOscillator(),g=c.createGain();o.frequency.value=ok?900:220;o.connect(g);g.connect(c.destination);g.gain.value=.08;o.start();o.stop(c.currentTime+.12)}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+$('date').value=today();render();focusScan();
+</script>
+</body></html>

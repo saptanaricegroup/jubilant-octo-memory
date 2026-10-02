@@ -99,72 +99,178 @@ let user=localStorage.getItem('packing_user')||'';
 let transport=localStorage.getItem('packing_transport')||'';
 let records=JSON.parse(localStorage.getItem('packing_records')||'[]');
 const $=id=>document.getElementById(id);
-function persist(){localStorage.setItem('packing_people',JSON.stringify(people));localStorage.setItem('packing_transports',JSON.stringify(transports));localStorage.setItem('packing_user',user);localStorage.setItem('packing_transport',transport);localStorage.setItem('packing_records',JSON.stringify(records))}
+
+function persist(){
+  localStorage.setItem('packing_people',JSON.stringify(people));
+  localStorage.setItem('packing_transports',JSON.stringify(transports));
+  localStorage.setItem('packing_user',user);
+  localStorage.setItem('packing_transport',transport);
+  localStorage.setItem('packing_records',JSON.stringify(records));
+}
+
 function renderPeople(){
- $('people').innerHTML=people.map((n,i)=>`<button type="button" class="person ${user===n?'active':''}" data-person-index="${i}">${esc(n)}</button>`).join('');
- $('currentUser').textContent=user?`ผู้แพ็ก: ${user}${transport?' | ขนส่ง: '+transport:''}`:'ยังไม่ได้เลือกผู้แพ็ก';
- $('filterEmployee').innerHTML='<option value="">ทุกผู้แพ็ก</option>'+people.map(n=>`<option>${esc(n)}</option>`).join('');
- $('managePeople').innerHTML=people.map((n,i)=>`<span class="badge">${esc(n)} <button style="padding:4px 8px;font-size:12px;background:#dc2626" onclick="removePerson(${i})">ลบ</button></span>`).join(' ');
+  $('people').innerHTML=people.map((n,i)=>`<button type="button" class="person ${user===n?'active':''}" data-person-index="${i}">${esc(n)}</button>`).join('');
+  $('currentUser').textContent=user?`ผู้แพ็ก: ${user}${transport?' | ขนส่ง: '+transport:''}`:'ยังไม่ได้เลือกผู้แพ็ก';
+  $('filterEmployee').innerHTML='<option value="">ทุกผู้แพ็ก</option>'+people.map(n=>`<option>${esc(n)}</option>`).join('');
+  $('managePeople').innerHTML=people.map((n,i)=>`<span class="badge">${esc(n)} <button style="padding:4px 8px;font-size:12px;background:#dc2626" onclick="removePerson(${i})">ลบ</button></span>`).join(' ');
 }
+
 function renderTransports(){
- $('transports').innerHTML=transports.map((t,i)=>`<button type="button" class="person ${transport===t?'active':''}" data-transport-index="${i}">🚚 ${esc(t)}</button>`).join('');
- $('filterTransport').innerHTML='<option value="">ทุกขนส่ง</option>'+transports.map(t=>`<option>${esc(t)}</option>`).join('');
- $('manageTransports').innerHTML=transports.map((t,i)=>`<span class="badge">${esc(t)} <button style="padding:4px 8px;font-size:12px;background:#dc2626" onclick="removeTransport(${i})">ลบ</button></span>`).join(' ');
+  $('transports').innerHTML=transports.map((t,i)=>`<button type="button" class="person ${transport===t?'active':''}" data-transport-index="${i}">🚚 ${esc(t)}</button>`).join('');
+  $('filterTransport').innerHTML='<option value="">ทุกขนส่ง</option>'+transports.map(t=>`<option>${esc(t)}</option>`).join('');
+  $('manageTransports').innerHTML=transports.map((t,i)=>`<span class="badge">${esc(t)} <button style="padding:4px 8px;font-size:12px;background:#dc2626" onclick="removeTransport(${i})">ลบ</button></span>`).join(' ');
 }
+
 function selectUser(n){user=n;persist();render();$('barcode').focus()}
 function selectTransport(t){transport=t;persist();render();$('barcode').focus()}
-function addPerson(){let n=$('newPerson').value.trim();if(!n)return;if(!people.includes(n))people.push(n);$('newPerson').value='';persist();render()}
-function addTransport(){let n=$('newTransport').value.trim();if(!n)return;if(!transports.includes(n))transports.push(n);$('newTransport').value='';persist();render()}
-function removePerson(i){if(confirm('ลบชื่อผู้แพ็กนี้หรือไม่?')){if(user===people[i])user='';people.splice(i,1);persist();render()}}
-function removeTransport(i){if(confirm('ลบขนส่งนี้หรือไม่?')){if(transport===transports[i])transport='';transports.splice(i,1);persist();render()}}
+function addPerson(){
+  let n=$('newPerson').value.trim();
+  if(!n)return;
+  if(!people.includes(n))people.push(n);
+  $('newPerson').value='';
+  persist();render();
+}
+function addTransport(){
+  let n=$('newTransport').value.trim();
+  if(!n)return;
+  if(!transports.includes(n))transports.push(n);
+  $('newTransport').value='';
+  persist();render();
+}
+function removePerson(i){
+  if(confirm('ลบชื่อผู้แพ็กนี้หรือไม่?')){
+    if(user===people[i])user='';
+    people.splice(i,1);
+    persist();render();
+  }
+}
+function removeTransport(i){
+  if(confirm('ลบขนส่งนี้หรือไม่?')){
+    if(transport===transports[i])transport='';
+    transports.splice(i,1);
+    persist();render();
+  }
+}
 function scan(){
- const code=$('barcode').value.trim();$('barcode').value='';
- if(!code){show(false,'⚠️ กรุณายิงบาร์โค้ด');focusScan();return}
- if(!user){show(false,'⚠️ กรุณาเลือกผู้แพ็กก่อน');focusScan();return}
- if(!transport){show(false,'⚠️ กรุณาเลือกขนส่งก่อน');focusScan();return}
- const old=records.find(r=>r.order===code);
- if(old){show(false,`⚠️ ออเดอร์ ${code} ถูกแพ็กแล้วโดย ${old.employee} | ${old.transport} | ${old.date} ${old.time}`);beep(false);render();focusScan();return}
- const d=new Date();
- records.unshift({order:code,employee:user,transport:transport,date:d.toISOString().slice(0,10),time:d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),status:'แพ็กแล้ว'});
- persist();show(true,`✅ บันทึกสำเร็จ — ${code} | ${user} | ${transport}`);beep(true);render();focusScan();
+  const code=$('barcode').value.trim();
+  $('barcode').value='';
+  if(!code){show(false,'⚠️ กรุณายิงบาร์โค้ด');focusScan();return}
+  if(!user){show(false,'⚠️ กรุณาเลือกผู้แพ็กก่อน');focusScan();return}
+  if(!transport){show(false,'⚠️ กรุณาเลือกขนส่งก่อน');focusScan();return}
+
+  const old=records.find(r=>r.order===code);
+  if(old){
+    show(false,`⚠️ ออเดอร์ ${code} ถูกแพ็กแล้วโดย ${old.employee} | ${old.transport} | ${old.date} ${old.time}`);
+    beep(false);
+    render();
+    focusScan();
+    return;
+  }
+
+  const d=new Date();
+  records.unshift({
+    order:code,
+    employee:user,
+    transport:transport,
+    date:d.toISOString().slice(0,10),
+    time:d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+    status:'สำเร็จ'
+  });
+  persist();
+  show(true,`✅ บันทึกสำเร็จ — ${code} | ${user} | ${transport}`);
+  beep(true);
+  render();
+  focusScan();
 }
-function show(ok,msg){$('status').className='status '+(ok?'ok':'bad');$('status').textContent=msg}
-function focusScan(){$('barcode').focus()}
+
+function show(ok,msg){
+  $('status').className='status '+(ok?'ok':'bad');
+  $('status').textContent=msg;
+}
+function focusScan(){
+  $('barcode').focus();
+}
+
 $('people').addEventListener('click',e=>{
- const b=e.target.closest('[data-person-index]');
- if(!b)return;
- const i=Number(b.dataset.personIndex);
- if(Number.isInteger(i)&&people[i]!==undefined) selectUser(people[i]);
+  const b=e.target.closest('[data-person-index]');
+  if(!b)return;
+  const i=Number(b.dataset.personIndex);
+  if(Number.isInteger(i)&&people[i]!==undefined) selectUser(people[i]);
 });
+
 $('transports').addEventListener('click',e=>{
- const b=e.target.closest('[data-transport-index]');
- if(!b)return;
- const i=Number(b.dataset.transportIndex);
- if(Number.isInteger(i)&&transports[i]!==undefined) selectTransport(transports[i]);
+  const b=e.target.closest('[data-transport-index]');
+  if(!b)return;
+  const i=Number(b.dataset.transportIndex);
+  if(Number.isInteger(i)&&transports[i]!==undefined) selectTransport(transports[i]);
 });
+
 $('barcode').addEventListener('keydown',e=>{if(e.key==='Enter')scan()});
-$('search').addEventListener('input',renderHistory);$('date').addEventListener('change',renderHistory);$('filterTransport').addEventListener('change',renderHistory);$('filterEmployee').addEventListener('change',renderHistory);
+$('search').addEventListener('input',renderHistory);
+$('date').addEventListener('change',renderHistory);
+$('filterTransport').addEventListener('change',renderHistory);
+$('filterEmployee').addEventListener('change',renderHistory);
+
 function today(){return new Date().toISOString().slice(0,10)}
+
 function render(){
- renderPeople();renderTransports();
- const todayRows=records.filter(r=>r.date===today());
- const counts=Object.fromEntries(people.map(n=>[n,0]));todayRows.forEach(r=>counts[r.employee]=(counts[r.employee]||0)+1);
- $('stats').innerHTML=people.map(n=>`<div class="stat">${esc(n)}<b>${counts[n]||0}</b><span class="small">ออเดอร์วันนี้</span></div>`).join('')+`<div class="stat">รวม<b>${todayRows.length}</b><span class="small">ออเดอร์วันนี้</span></div>`;
- const tc=Object.fromEntries(transports.map(t=>[t,0]));todayRows.forEach(r=>tc[r.transport]=(tc[r.transport]||0)+1);
- $('transportStats').innerHTML=transports.map(t=>`<div class="stat">🚚 ${esc(t)}<b>${tc[t]||0}</b><span class="small">ออเดอร์วันนี้</span></div>`).join('');
- renderHistory();
+  renderPeople();
+  renderTransports();
+
+  const todayRows=records.filter(r=>r.date===today());
+  const counts=Object.fromEntries(people.map(n=>[n,0]));
+  todayRows.forEach(r=>counts[r.employee]=(counts[r.employee]||0)+1);
+  $('stats').innerHTML=people.map(n=>`<div class="stat">${esc(n)}<b>${counts[n]||0}</b><span class="small">ออเดอร์วันนี้</span></div>`).join('')+`<div class="stat">รวม<b>${todayRows.length}</b><span class="small">ออเดอร์วันนี้</span></div>`;
+
+  const tc=Object.fromEntries(transports.map(t=>[t,0]));
+  todayRows.forEach(r=>tc[r.transport]=(tc[r.transport]||0)+1);
+  $('transportStats').innerHTML=transports.map(t=>`<div class="stat">🚚 ${esc(t)}<b>${tc[t]||0}</b><span class="small">ออเดอร์วันนี้</span></div>`).join('');
+
+  renderHistory();
 }
+
 function renderHistory(){
- const q=$('search').value.trim().toLowerCase(),dt=$('date').value,ft=$('filterTransport').value,fe=$('filterEmployee').value;
- let rows=records.filter(r=>(!q||r.order.toLowerCase().includes(q)||r.employee.toLowerCase().includes(q)||r.transport.toLowerCase().includes(q))&&(!dt||r.date===dt)&&(!ft||r.transport===ft)&&(!fe||r.employee===fe));
- $('history').innerHTML=rows.map(r=>`<tr><td><b>${esc(r.order)}</b></td><td>${esc(r.employee)}</td><td>🚚 ${esc(r.transport)}</td><td>${r.date}</td><td>${r.time}</td><td>✅ ${r.status}</td></tr>`).join('')||'<tr><td colspan="6" class="small">ยังไม่มีข้อมูล</td></tr>';
+  const q=$('search').value.trim().toLowerCase();
+  const dt=$('date').value;
+  const ft=$('filterTransport').value;
+  const fe=$('filterEmployee').value;
+
+  let rows=records.filter(r=>
+    (!q || r.order.toLowerCase().includes(q) || r.employee.toLowerCase().includes(q) || r.transport.toLowerCase().includes(q)) &&
+    (!dt || r.date===dt) &&
+    (!ft || r.transport===ft) &&
+    (!fe || r.employee===fe)
+  );
+
+  $('history').innerHTML=rows.map(r=>`<tr><td><b>${esc(r.order)}</b></td><td>${esc(r.employee)}</td><td>🚚 ${esc(r.transport)}</td><td>${r.date}</td><td>${r.time}</td><td>✅ ${esc(r.status)}</td></tr>`).join('');
 }
+
 function exportCSV(){
- let csv='order,employee,transport,date,time,status\n'+records.map(r=>[r.order,r.employee,r.transport,r.date,r.time,r.status].map(x=>`"${String(x).replaceAll('"','""')}"`).join(',')).join('\n');
- const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));a.download='packing_records.csv';a.click();
+  let csv='order,employee,transport,date,time,status\n'+records.map(r=>[r.order,r.employee,r.transport,r.date,r.time,r.status].map(x=>`"${String(x).replaceAll('"','""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='packing_records.csv';
+  a.click();
 }
-function beep(ok){try{const c=new AudioContext(),o=c.createOscillator(),g=c.createGain();o.frequency.value=ok?900:220;o.connect(g);g.connect(c.destination);g.gain.value=.08;o.start();o.stop(c.currentTime+.12)}catch(e){}}
-function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-$('date').value=today();render();focusScan();
+
+function beep(ok){
+  try{
+    const c=new AudioContext();
+    const o=c.createOscillator();
+    const g=c.createGain();
+    o.frequency.value=ok?900:220;
+    o.connect(g);
+    g.connect(c.destination);
+    g.gain.value=.08;
+    o.start();
+    o.stop(c.currentTime+0.12);
+  }catch(e){}
+}
+
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]))}
+
+$('date').value=today();
+render();
+focusScan();
 </script>
 </body></html>
